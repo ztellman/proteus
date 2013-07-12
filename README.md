@@ -10,9 +10,11 @@ Add this to your `project.clj`:
 [proteus "0.1.2"]
 ```
 
-Proteus exposes a single macro, `let-mutable`:
+Proteus exposes a single macro, `proteus/let-mutable`:
 
 ```clj
+(use 'proteus)
+
 (let-mutable [x 0]
   (dotimes [_ 100]
     (set! x (inc x)))
