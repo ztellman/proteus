@@ -36,7 +36,7 @@ Unless, of course, you want there to be.  It can be sometimes useful to close ov
     x))
 ```
 
-Here we've hinted the closure as `:local`, meaning that it's only called within the local scope.  Since this is true for `swap!`, we can safely use the mutable variable as a side-channel for communication.  However, using `:local` on a non-local closure may have strange, reality-defying effects.  Use as your own risk.          
+Here we've hinted the closure as `:local`, meaning that it's only called within the local scope.  Since this is true for `swap!`, we can safely use the mutable variable as a side-channel for communication.  However, using `:local` on a non-local closure may have strange, reality-defying effects.  Use at your own risk.          
 
 That's it.  That's the end of the library.
 
