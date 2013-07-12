@@ -1,4 +1,4 @@
-(defproject proteus "0.1.0"
+(defproject proteus "0.1.1"
   :description "local. mutable. variables."
   :license {:name "MIT License"
             :url "http://opensource.org/licenses/MIT"}
