@@ -26,11 +26,14 @@ Unless, of course, you want there to be.  It can be sometimes useful to close ov
 ```clj
 (let [a (atom 0)] 
   (let-mutable [x :foo]
+    
     (swap! a 
       ^:local 
       (fn [a]
         (set! x :bar)
-        (inc a)))))
+        (inc a)))
+    
+    x))
 ```
 
 Here we've hinted the closure as `:local`, meaning that it's only called within the local scope.  Since this is true for `swap!`, we can safely use the mutable variable as a side-channel for communication.  However, using `:local` on a non-local closure may have strange, reality-defying effects.  Use as your own risk.          
