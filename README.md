@@ -7,7 +7,7 @@ Proteus gives you back the local mutable variables you've so dearly missed.
 Add this to your `project.clj`:
 
 ```clj
-[proteus "0.1.1"]
+[proteus "0.1.2"]
 ```
 
 Proteus exposes a single macro, `let-mutable`:
@@ -19,7 +19,21 @@ Proteus exposes a single macro, `let-mutable`:
   x)
 ```
 
-`let-mutable` gives you variables that can be set using `set!` within the scope.  These variables cannot escape the local scope; if passed into a function or closed over, the current value of the variable will be captured.  Since unboxed numbers are supported, this can be significantly faster than `clojure.core/with-local-vars`.
+`let-mutable` gives you variables that can be set using `set!` within the scope.  These variables cannot escape the local scope; if passed into a function or closed over, the current value of the variable will be captured.  This means that even though this is unsynchronized mutable state, there's no potential for race conditions.
+
+Unless, of course, you want there to be.  It can be sometimes useful to close over the variable rather than the value, for instance when trying to communicate more than the new value from within a `swap!` call.
+
+```clj
+(let [a (atom 0)] 
+  (let-mutable [x :foo]
+    (swap! a 
+      ^:local 
+      (fn [a]
+        (set! x :bar)
+        (inc a)))))
+```
+
+Here we've hinted the closure as `:local`, meaning that it's only called within the local scope.  Since this is true for `swap!`, we can safely use the mutable variable as a side-channel for communication.  However, using `:local` on a non-local closure may have strange, reality-defying effects.  Use as your own risk.          
 
 That's it.  That's the end of the library.
 

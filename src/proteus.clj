@@ -74,11 +74,21 @@
 (defmethod walk-binding-forms 'loop* [f x vs]
   (transform-binding-form f x vs))
 
+(defmethod walk-binding-forms 'catch [f [_ type v & body] vs]
+  (let [vs' (dissoc vs v)]
+    `(catch ~type ~v
+       ~@(map #(walk-binding-forms f % vs') body))))
+
 (defmethod walk-binding-forms 'fn* [f x vs]
-  `(let [~@(interleave
-             (map #(with-meta % nil) (keys vs))
-             (map :read-form (vals vs)))]
-     (fn* ~@(map #(walk-binding-forms f % #{}) (rest x)))))
+  (if (-> x meta :local)
+
+    ;; give them just enough rope to hang themselves
+    `(fn* ~@(map #(walk-binding-forms f % vs) (rest x)))
+
+    `(let [~@(interleave
+               (map #(with-meta % nil) (keys vs))
+               (map :read-form (vals vs)))]
+       (fn* ~@(map #(walk-binding-forms f % #{}) (rest x))))))
 
 ;;;
 

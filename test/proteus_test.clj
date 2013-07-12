@@ -30,7 +30,23 @@
            (set! x 42)
            (let [f (fn [] x)]
              (set! x -1)
-             f))))))
+             f)))))
+
+  (is (= 0
+        ((let-mutable [x 0]
+           (set! x 42)
+           (let [f ^:local (fn []
+                             (set! x (inc x))
+                             x)]
+             (set! x -1)
+             f)))))
+
+  (is (thrown? Exception
+        (let-mutable [x 0]
+          (try
+            (set! x (/ 1 0))
+            (catch Exception x
+              (throw x)))))))
 
 (deftest ^:benchmark benchmark-sum
   (c/quick-bench
