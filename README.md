@@ -19,7 +19,7 @@ Proteus exposes a single macro, `let-mutable`:
   x)
 ```
 
-`let-mutable` gives you variables that can be set using `set!` within the scope.  These variables cannot escape the local scope; if passed into a function or closed over, the current value of the variable will be captured.  This means that even though this is unsynchronized mutable state, there's no potential for race conditions.
+`let-mutable` gives you variables that can be set using `set!` within the scope.  Since it's unsynchronized and doesn't box numbers, it's faster (sometimes significantly) than any state container in Clojure.  However, these variables cannot escape the local scope; if passed into a function or closed over, the current value of the variable will be captured.  This means that even though this is unsynchronized mutable state, there's no potential for race conditions.  
 
 Unless, of course, you want there to be.  It can be sometimes useful to close over the variable rather than the value, for instance when trying to communicate more than the new value from within a `swap!` call.
 
