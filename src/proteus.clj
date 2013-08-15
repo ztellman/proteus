@@ -18,6 +18,11 @@
       (with-meta x (meta form))
       x)))
 
+(defn postwalk
+  "Like `clojure.walk/postwalk`, but preserves metadata."
+  [f form]
+  (walk (partial postwalk f) f form))
+
 (defn- prewalk
   "Like `clojure.walk/prewalk`, but preserves metadata."
   [f form]
@@ -67,6 +72,21 @@
                      (map #(walk-binding-forms f % vs))))
         vs' (apply dissoc vs ks)]
     `(~x ~(vec bindings) ~@(map #(walk-binding-forms f % vs') rest))))
+
+(defmethod walk-binding-forms 'case* [f x vs]
+  (let [prefix (butlast (take-while (complement map?) x))
+        default (last (take-while (complement map?) x))
+        body (first (drop-while (complement map?) x))
+        suffix (rest (drop-while (complement map?) x))]
+    (concat
+      prefix
+      [(walk-binding-forms f default vs)]
+      [(->> body
+         (map
+           (fn [[k [idx form]]]
+             [k [idx (walk-binding-forms f form vs)]]))
+         (into {}))]
+      suffix)))
 
 (defmethod walk-binding-forms 'let* [f x vs]
   (transform-binding-form f x vs))
