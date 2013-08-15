@@ -1,6 +1,13 @@
 package proteus;
 
 public class Containers {
+    
+    public static class B {
+        public boolean x;
+        public B(boolean y) { x = y; };
+        public void set(boolean y) { x = y; };
+    }
+
     public static class O {
         public Object x;
         public O(Object y) { x = y; };

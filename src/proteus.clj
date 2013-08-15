@@ -121,6 +121,7 @@
     (when (.hasJavaClass binding)
       (.getJavaClass binding))
     (cond
+      (instance? Boolean x) Boolean/TYPE
       (instance? Long x) Long/TYPE
       (instance? Double x) Double/TYPE)))
 
@@ -144,6 +145,7 @@
              (map second))
         types (map
                 #(condp = (typeof % &env)
+                   Boolean/TYPE "proteus.Containers$B"
                    Long/TYPE "proteus.Containers$L"
                    Double/TYPE "proteus.Containers$D"
                    "proteus.Containers$O")

@@ -11,6 +11,11 @@
         (let-mutable [x 0]
           (set! x (inc x))
           x)))
+
+  (is (= false
+        (let-mutable [x true]
+          (set! x (not x))
+          x)))
   
   (is (= 100
         (let-mutable [x 0]
