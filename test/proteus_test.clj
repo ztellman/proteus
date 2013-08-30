@@ -51,7 +51,16 @@
           (try
             (set! x (/ 1 0))
             (catch Exception x
-              (throw x)))))))
+              (throw x))))))
+
+  (is (= [0 :x]
+         (let-mutable [x 0] [x :x])))
+
+  (is (= #{0 :x}
+         (let-mutable [x 0] #{x :x})))
+
+  (is (= {0 1 :x :y}
+         (let-mutable [x 0 y 1] {x y :x :y}))))
 
 (deftest ^:benchmark benchmark-sum
   (c/quick-bench
