@@ -12,6 +12,7 @@
             (list? form) (outer (apply list (map inner form)))
             (instance? clojure.lang.IMapEntry form) (outer (vec (map inner form)))
             (seq? form) (outer (doall (map inner form)))
+            (instance? clojure.lang.IRecord form) (outer form) ;; arguments to literal records are not evaluated anyway
             (coll? form) (outer (into (empty form) (map inner form)))
             :else (outer form))]
     (if (instance? clojure.lang.IObj x)
@@ -136,6 +137,9 @@
 
           (set? x)
           (set (map #(walk-binding-forms this % vs) x))
+
+          (instance? clojure.lang.IRecord x)
+          x ;; arguments to literal records are not evaluated anyway
 
           (map? x)
           (into {} (for [[k v] x] [(walk-binding-forms this k vs) (walk-binding-forms this v vs)]))

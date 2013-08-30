@@ -6,6 +6,8 @@
 
 (set! *unchecked-math* true)
 
+(defrecord Test [x])
+
 (deftest test-let-mutable
   (is (= 1
         (let-mutable [x 0]
@@ -60,7 +62,11 @@
          (let-mutable [x 0] #{x :x})))
 
   (is (= {0 1 :x :y}
-         (let-mutable [x 0 y 1] {x y :x :y}))))
+         (let-mutable [x 0 y 1] {x y :x :y})))
+
+  ;; dont bail when walking records
+  (is (= (Test. nil)
+         (let-mutable [x 0] #proteus_test.Test{:x nil}))))
 
 (deftest ^:benchmark benchmark-sum
   (c/quick-bench
