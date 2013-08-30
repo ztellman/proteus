@@ -137,8 +137,8 @@
           (set? x)
           (set (map #(walk-binding-forms this % vs) x))
 
-          (map? x) ;; this will also work for records
-          (into x (for [[k v] x] [(walk-binding-forms this k vs) (walk-binding-forms this v vs)]))
+          (map? x)
+          (into {} (for [[k v] x] [(walk-binding-forms this k vs) (walk-binding-forms this v vs)]))
 
           :else
           x))
