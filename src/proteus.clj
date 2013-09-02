@@ -1,140 +1,61 @@
 (ns proteus
+  (:require
+    [riddley.walk :refer :all]
+    [riddley.compiler :refer (locals)])
   (:import
     [clojure.lang
      Compiler$LocalBinding]))
 
-;;; stolen from potemkin, which in turn adapted clojure.walk
+;;;
 
-(defn- walk
-  "Like `clojure.walk/walk`, but preserves metadata."
-  [inner outer form]
-  (let [x (cond
-            (list? form) (outer (apply list (map inner form)))
-            (instance? clojure.lang.IMapEntry form) (outer (vec (map inner form)))
-            (seq? form) (outer (doall (map inner form)))
-            (coll? form) (outer (into (empty form) (map inner form)))
-            :else (outer form))]
-    (if (instance? clojure.lang.IObj x)
-      (with-meta x (meta form))
+(declare transform-let-mutable-form)
+
+(defn- mutable-vars []
+  (->> (locals) keys (filter (comp ::write-form meta))))
+
+(defn- read-form [x]
+  (->> (locals) keys (filter #{x}) first meta ::read-form))
+
+(defn- write-form [x]
+  (->> (locals) keys (filter #{x}) first meta ::write-form))
+
+(defn- transform-predicate [x]
+  (or (symbol? x)
+    (and (seq? x)
+      (or
+        (#{'letfn* 'set!} (first x))
+        (and (= 'fn* (first x)) (not (:local (meta x))))))))
+
+(defn- transform-handler [x]
+  (if (symbol? x)
+    (or (read-form x) x)
+    (condp = (first x)
+      'set!
+      (let [[_ k v] x]
+        (if-let [f (write-form k)]
+          (f (transform-let-mutable-form v))
+          x))
+      
+      'fn*
+      (let [vs (seq (mutable-vars))]
+        `(let [~@(interleave vs (map read-form vs))]
+           ~x))
+
+      'letfn*
+      (let [[_ bindings & body] x
+            vs (seq (mutable-vars))
+            vs' (map #(gensym (name %)) vs)]
+        `(let [~@(interleave vs' vs)
+               ~@(interleave vs (map read-form vs))]
+           (~'letfn* ~bindings
+             (let [~@(interleave vs vs')]
+               ~(transform-let-mutable-form `(do ~@body))))))
       x)))
 
-(defn postwalk
-  "Like `clojure.walk/postwalk`, but preserves metadata."
-  [f form]
-  (walk (partial postwalk f) f form))
-
-(defn- prewalk
-  "Like `clojure.walk/prewalk`, but preserves metadata."
-  [f form]
-  (walk (partial prewalk f) identity (f form)))
-
-(defn- macroexpand+
-  "Expands both macros and inline functions."
-  [x]
-  (let [x* (macroexpand x)]
-    (if-let [inline-fn (and (seq? x*)
-                         (symbol? (first x*))
-                         (not (-> x* meta ::transformed))
-                         (-> x first resolve meta :inline))]
-      (let [x** (apply inline-fn (rest x*))]
-        (recur
-          ;; unfortunately, static function calls can look a lot like what we just
-          ;; expanded, so prevent infinite expansion
-          (if (= '. (first x**))
-            (concat (butlast x**) [(with-meta (last x**) {::transformed true})])
-            x**)))
-      x*)))
-
-(defn- macroexpand-all
-  "Fully macroexpands all forms."
-  [x]
-  (prewalk macroexpand+ x))
+(defn- transform-let-mutable-form [x]
+  (walk-exprs transform-predicate transform-handler x))
 
 ;;;
-
-(defmulti ^:private walk-binding-forms
-  (fn [f x _]
-    (if (seq? x)
-      (first x)
-      ::default))
-  :default ::default)
-
-(defmethod walk-binding-forms ::default [f x vs]
-  (f x vs))
-
-(defn- transform-binding-form [f [x bindings & rest] vs]
-  (let [ks (->> bindings (partition 2) (map first))
-        bindings (interleave
-                   ks
-                   (->> bindings
-                     (partition 2)
-                     (map second)
-                     (map #(walk-binding-forms f % vs))))
-        vs' (apply dissoc vs ks)]
-    `(~x ~(vec bindings) ~@(map #(walk-binding-forms f % vs') rest))))
-
-(defmethod walk-binding-forms 'case* [f x vs]
-  (let [prefix (butlast (take-while (complement map?) x))
-        default (last (take-while (complement map?) x))
-        body (first (drop-while (complement map?) x))
-        suffix (rest (drop-while (complement map?) x))]
-    (concat
-      prefix
-      [(walk-binding-forms f default vs)]
-      [(->> body
-         (map
-           (fn [[k [idx form]]]
-             [k [idx (walk-binding-forms f form vs)]]))
-         (into {}))]
-      suffix)))
-
-(defmethod walk-binding-forms 'let* [f x vs]
-  (transform-binding-form f x vs))
-
-(defmethod walk-binding-forms 'loop* [f x vs]
-  (transform-binding-form f x vs))
-
-(defmethod walk-binding-forms 'catch [f [_ type v & body] vs]
-  (let [vs' (dissoc vs v)]
-    `(catch ~type ~v
-       ~@(map #(walk-binding-forms f % vs') body))))
-
-(defmethod walk-binding-forms 'fn* [f x vs]
-  (if (-> x meta :local)
-
-    ;; give them just enough rope to hang themselves
-    `(fn* ~@(map #(walk-binding-forms f % vs) (rest x)))
-
-    `(let [~@(interleave
-               (map #(with-meta % nil) (keys vs))
-               (map :read-form (vals vs)))]
-       (fn* ~@(map #(walk-binding-forms f % #{}) (rest x))))))
-
-;;;
-
-(defn- transform-let-mutable-form [x vs]
-  (let [x (macroexpand-all x)]
-    (walk-binding-forms
-      (fn this [x vs]
-        (cond
-
-          (and (symbol? x) (contains? vs x))
-          (->> x (get vs) :read-form)
-
-          (and (seq? x) (= 'set! (first x)))
-          (do
-            (assert (= 3 (count x)))
-            (if-let [v (get vs (second x))]
-              ((:write-form v) (walk-binding-forms this (nth x 2) vs))
-              (map #(walk-binding-forms this % vs) x)))
-
-          (seq? x)
-          (map #(walk-binding-forms this % vs) x)
-
-          :else
-          x))
-      x
-      vs)))
 
 (defn- typeof [x env]
   (if-let [^Compiler$LocalBinding binding (get env x)]
@@ -175,15 +96,13 @@
                (with-meta k {:tag type}))
              ks
              types)]
-    `(let [~@(interleave
-               ks
-               (map (fn [v type] `(new ~(symbol type) ~v)) vs types))]
-       ~(transform-let-mutable-form
-          `(do ~@body)
-          (zipmap
-            ks
-            (map
-              (fn [k]
-                 {:read-form `(.x ~k)
-                  :write-form (fn [x] `(do (.set ~k ~x) nil))})
-              ks))))))
+    (transform-let-mutable-form
+      `(let [~@(interleave
+                 (map
+                   (fn [k]
+                     (with-meta k
+                       {::read-form `(.x ~k)
+                        ::write-form (fn [x] `(do (.set ~k ~x) nil))}))
+                   ks)
+                 (map (fn [v type] `(new ~(symbol type) ~v)) vs types))]
+         ~@body))))
