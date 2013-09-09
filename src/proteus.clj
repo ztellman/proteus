@@ -1,6 +1,6 @@
 (ns proteus
   (:require
-    [riddley.walk :refer :all]
+    [riddley.walk :refer (walk-exprs)]
     [riddley.compiler :refer (locals)])
   (:import
     [clojure.lang
@@ -10,14 +10,17 @@
 
 (declare transform-let-mutable-form)
 
+(defn- key* [x]
+  (when x (key x)))
+
 (defn- mutable-vars []
   (->> (locals) keys (filter (comp ::write-form meta))))
 
 (defn- read-form [x]
-  (->> (locals) keys (filter #{x}) first meta ::read-form))
+  (-> (locals) (find x) key* meta ::read-form))
 
 (defn- write-form [x]
-  (->> (locals) keys (filter #{x}) first meta ::write-form))
+  (-> (locals) (find x) key* meta ::write-form))
 
 (defn- transform-predicate [x]
   (or (symbol? x)

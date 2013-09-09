@@ -7,7 +7,7 @@ Proteus gives you back the local mutable variables you've so dearly missed.
 Add this to your `project.clj`:
 
 ```clj
-[proteus "0.1.3"]
+[proteus "0.1.4"]
 ```
 
 Proteus exposes a single macro, `proteus/let-mutable`:
