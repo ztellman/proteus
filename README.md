@@ -1,4 +1,4 @@
-![](https://dl.dropboxusercontent.com/u/174179/proteus/the-blob.jpg)
+![](docs/the-blob.jpg)
 
 Proteus gives you back the local mutable variables you've so dearly missed.
 
