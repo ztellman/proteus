@@ -18,7 +18,7 @@
         (let-mutable [x true]
           (set! x (not x))
           x)))
-  
+
   (is (= 100
         (let-mutable [x 0]
           (dotimes [_ 100]
@@ -64,16 +64,16 @@
   (is (= 3 (let-mutable [x 3]
              (case x
                3 3))))
-  
+
   (is (= [0 :x]
         (let-mutable [x 0] [x :x])))
-  
+
   (is (= #{0 :x}
         (let-mutable [x 0] #{x :x})))
-  
+
   (is (= {0 1 :x :y}
         (let-mutable [x 0 y 1] {x y :x :y})))
-  
+
   (is (= (Test. nil)
         (let-mutable [x 0] #proteus_test.Test{:x nil}))))
 
@@ -82,4 +82,11 @@
     (let-mutable [x 0]
       (dotimes [_ 10000]
         (set! x (+ x 1)))
+      x)))
+
+(deftest ^:benchmark benchmark-volatile-sum
+  (c/quick-bench
+    (let [x (volatile! 0)]
+      (dotimes [_ 10000]
+        (vswap! x inc))
       x)))
