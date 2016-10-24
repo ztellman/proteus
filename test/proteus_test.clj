@@ -75,7 +75,25 @@
         (let-mutable [x 0 y 1] {x y :x :y})))
 
   (is (= (Test. nil)
-        (let-mutable [x 0] #proteus_test.Test{:x nil}))))
+        (let-mutable [x 0] #proteus_test.Test{:x nil})))
+  
+  (is (= 2 (let-mutable [a 1 b (let-mutable [c 2] c)] b)))
+
+  (is (= 8 (let-mutable [a 1 
+                         b (let-mutable [c 2] 
+                             (set! a 3)
+                             (set! c 5)
+                             (+ a c))]
+             b)))
+  
+  (is (= 88 (let-mutable [a 1 
+                          b (let-mutable [c 2
+                                          d (let-mutable [e 80] 
+                                              e)]
+                              (set! a 3)
+                              (set! c 5)
+                              (+ a c d))]
+              b))))
 
 (deftest ^:benchmark benchmark-sum
   (c/quick-bench

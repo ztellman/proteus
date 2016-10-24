@@ -17,7 +17,9 @@
   (->> (locals) keys (filter (comp ::write-form meta))))
 
 (defn- read-form [x]
-  (-> (locals) (find x) key* meta ::read-form))
+  (if (not (:tag (meta x)))
+    (-> (locals) (find x) key* meta ::read-form)
+    nil))
 
 (defn- write-form [x]
   (-> (locals) (find x) key* meta ::write-form))
